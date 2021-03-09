@@ -1,0 +1,197 @@
+version: "3"
+services:
+  zookeeper-sasl-1:
+    container_name: zookeeper1.confluent.io
+    hostname: zookeeper1.confluent.io
+    image: confluentinc/cp-zookeeper:5.5.1
+    # This is required because Zookeeper can fail if kerberos is still initializing.
+    restart: on-failure:3
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 22181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.confluent.io:22888:23888;zookeeper2.confluent.io:32888:33888;zookeeper3.confluent.io:42888:43888
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/zookeeper_1_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+        -Dsun.security.krb5.debug=true
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  zookeeper-sasl-2:
+    container_name: zookeeper2.confluent.io
+    hostname: zookeeper2.confluent.io
+    image: confluentinc/cp-zookeeper:5.5.1
+    # This is required because Zookeeper can fail if kerberos is still initializing.
+    restart: on-failure:3
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 32181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.confluent.io:22888:23888;zookeeper2.confluent.io:32888:33888;zookeeper3.confluent.io:42888:43888
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/zookeeper_2_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+        -Dsun.security.krb5.debug=true
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  zookeeper-sasl-3:
+    container_name: zookeeper3.confluent.io
+    hostname: zookeeper3.confluent.io
+    image: confluentinc/cp-zookeeper:5.5.1
+    # This is required because Zookeeper can fail if kerberos is still initializing.
+    restart: on-failure:3
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 42181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1.confluent.io:22888:23888;zookeeper2.confluent.io:32888:33888;zookeeper3.confluent.io:42888:43888
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/zookeeper_3_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+        -Dsun.security.krb5.debug=true
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  kerberos:
+    container_name: quickstart.confluent.io
+    hostname: quickstart.confluent.io
+    image: kerberos:1.0
+    environment:
+      BOOTSTRAP: 0
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/tmp/keytab
+      - /dev/urandom:/dev/random
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  kafka-sasl-1:
+    container_name: kafka1.confluent.io
+    hostname: kafka1.confluent.io
+    image: confluentinc/cp-kafka
+    # This is required because Kafka can fail if kerberos is still initializing.
+    restart: on-failure:3
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.confluent.io:22181,zookeeper2.confluent.io:32181,zookeeper3.confluent.io:42181
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka1.confluent.io:19094,SSL://kafka1.confluent.io:19095,PLAINTEXT://localhost:9092
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker1.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: broker1_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.broker1.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker1_truststore_creds
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_CLIENT_AUTH: requested
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: GSSAPI
+      KAFKA_SASL_ENABLED_MECHANISMS: GSSAPI
+      KAFKA_SASL_KERBEROS_SERVICE_NAME: kafka
+      KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/broker1_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dsun.security.krb5.debug=true
+    ports:
+      - 9092:9092
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  kafka-sasl-2:
+    container_name: kafka2.confluent.io
+    hostname: kafka2.confluent.io
+    image: confluentinc/cp-kafka:latest
+    restart: on-failure:3
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.confluent.io:22181,zookeeper2.confluent.io:32181,zookeeper3.confluent.io:42181
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka2.confluent.io:29094,SSL://kafka2.confluent.io:29095,PLAINTEXT://localhost:9093
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker2.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: broker2_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: broker2_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.broker2.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker2_truststore_creds
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_CLIENT_AUTH: requested
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: GSSAPI
+      KAFKA_SASL_ENABLED_MECHANISMS: GSSAPI
+      KAFKA_SASL_KERBEROS_SERVICE_NAME: kafka
+      KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/broker2_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dsun.security.krb5.debug=true
+    ports:
+      - 9093:9093
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+  kafka-sasl-3:
+    container_name: kafka3.confluent.io
+    hostname: kafka3.confluent.io
+    image: confluentinc/cp-kafka:latest
+    restart: on-failure:3
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1.confluent.io:22181,zookeeper2.confluent.io:32181,zookeeper3.confluent.io:42181
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka3.confluent.io:39094,SSL://kafka3.confluent.io:39095,PLAINTEXT://localhost:9094
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker3.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: broker3_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: broker3_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.broker3.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker3_truststore_creds
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_CLIENT_AUTH: requested
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: GSSAPI
+      KAFKA_SASL_ENABLED_MECHANISMS: GSSAPI
+      KAFKA_SASL_KERBEROS_SERVICE_NAME: kafka
+      KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
+      KAFKA_OPTS:
+        -Djava.security.auth.login.config=/etc/kafka/secrets/broker3_jaas.conf
+        -Djava.security.krb5.conf=/etc/kafka/secrets/krb.conf
+        -Dsun.security.krb5.debug=true
+    ports:
+      - 9094:9094
+    volumes:
+      - ${KAFKA_SASL_SECRETS_DIR}:/etc/kafka/secrets
+    extra_hosts:
+      - "moby:127.0.0.1"
+    networks:
+      - kafka
+
+networks:
+  kafka:
+    driver: bridge
